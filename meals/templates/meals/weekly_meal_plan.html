@@ -1,0 +1,58 @@
+{% extends 'meals/base.html' %}
+{% load meal_extras %}
+
+{% block title %}Weekly Meal Plan - Weekly Meals{% endblock %}
+
+{% block content %}
+<h2>Weekly Meal Plan</h2>
+<p><strong>Week of:</strong> {{ week_start|date:"M d, Y" }}</p>
+
+<div class="meal-grid">
+    <!-- Header row -->
+    <div class="meal-cell header">Meal Type</div>
+    {% for day_num, day_name in days_of_week %}
+        <div class="meal-cell header">{{ day_name }}</div>
+    {% endfor %}
+    
+    <!-- Meal rows -->
+    {% for meal_type, meal_type_display in meal_types %}
+        <div class="meal-cell header">{{ meal_type_display }}</div>
+        {% for day_num, day_name in days_of_week %}
+            <div class="meal-cell">
+                {% if meal_grid|lookup:day_num|lookup:meal_type %}
+                    {% with entry=meal_grid|lookup:day_num|lookup:meal_type %}
+                        <strong><a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #2c3e50; text-decoration: none;">{{ entry.meal.name }}</a></strong>
+                        <br><small>{{ entry.meal.total_time }}min</small>
+                        {% if entry.notes %}
+                            <br><small style="color: #666;">{{ entry.notes }}</small>
+                        {% endif %}
+                    {% endwith %}
+                {% else %}
+                    <em style="color: #999;">No meal planned</em>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endfor %}
+</div>
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'admin:meals_weeklymealplan_change' meal_plan.id %}" class="btn">Edit Meal Plan</a>
+    <a href="{% url 'admin:meals_mealplanentry_add' %}" class="btn">Add Meal to Plan</a>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h3>Instructions</h3>
+    <p>To add meals to your weekly plan:</p>
+    <ol>
+        <li>First, make sure you have created some meals in the <a href="{% url 'admin:meals_meal_changelist' %}">Meals admin</a></li>
+        <li>Then add entries to your meal plan using the <a href="{% url 'admin:meals_mealplanentry_add' %}">Add Meal Plan Entry</a> form</li>
+        <li>Or edit this meal plan directly using the <a href="{% url 'admin:meals_weeklymealplan_change' meal_plan.id %}">"Edit Meal Plan"</a> button above</li>
+    </ol>
+</div>
+{% endblock %}
+
+<!-- Template filter to lookup dictionary values -->
+{% load static %}
+<script>
+// Custom template filter would go here, but for now we'll handle this in the view
+</script>

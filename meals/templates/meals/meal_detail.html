@@ -1,0 +1,76 @@
+{% extends 'meals/base.html' %}
+
+{% block title %}{{ meal.name }} - Weekly Meals{% endblock %}
+
+{% block content %}
+<h2>{{ meal.name }}</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 30px; margin-top: 20px;">
+    <div>
+        <h3>Details</h3>
+        <p><strong>Type:</strong> {{ meal.get_meal_type_display }}</p>
+        
+        {% if meal.recipe %}
+            <p><strong>Prep Time:</strong> {{ meal.recipe.prep_time }} minutes</p>
+            <p><strong>Cook Time:</strong> {{ meal.recipe.cook_time }} minutes</p>
+            <p><strong>Total Time:</strong> {{ meal.recipe.total_time }} minutes</p>
+            <p><strong>Servings:</strong> {{ meal.recipe.servings }}</p>
+            <p><strong>Difficulty:</strong> {{ meal.recipe.get_difficulty_display }}</p>
+        {% else %}
+            <p><em>No recipe details available</em></p>
+        {% endif %}
+        
+        {% if meal.description %}
+        <div style="margin-top: 20px;">
+            <h3>Description</h3>
+            <p>{{ meal.description }}</p>
+        </div>
+        {% endif %}
+        
+        {% if meal.nutrition %}
+        <div style="margin-top: 20px;">
+            <h3>Nutrition (per serving)</h3>
+            <div style="background-color: #f0f8ff; padding: 15px; border-radius: 5px;">
+                {% if meal.nutrition.calories_per_serving %}<p><strong>Calories:</strong> {{ meal.nutrition.calories_per_serving }}</p>{% endif %}
+                {% if meal.nutrition.protein_grams %}<p><strong>Protein:</strong> {{ meal.nutrition.protein_grams }}g</p>{% endif %}
+                {% if meal.nutrition.carbs_grams %}<p><strong>Carbs:</strong> {{ meal.nutrition.carbs_grams }}g</p>{% endif %}
+                {% if meal.nutrition.fat_grams %}<p><strong>Fat:</strong> {{ meal.nutrition.fat_grams }}g</p>{% endif %}
+                {% if meal.nutrition.fiber_grams %}<p><strong>Fiber:</strong> {{ meal.nutrition.fiber_grams }}g</p>{% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div>
+        {% if meal.recipe %}
+            <h3>Ingredients</h3>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-line;">{{ meal.recipe.ingredients }}</div>
+            
+            <h3 style="margin-top: 30px;">Instructions</h3>
+            <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; white-space: pre-line;">{{ meal.recipe.instructions }}</div>
+        {% else %}
+            <div style="background-color: #fff3cd; padding: 20px; border-radius: 5px; text-align: center;">
+                <h3>No Recipe Available</h3>
+                <p>This meal doesn't have detailed recipe information yet.</p>
+                <a href="{% url 'admin:meals_recipe_add' %}?meal={{ meal.id }}" class="btn">Add Recipe</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div style="margin-top: 30px;">
+    <a href="{% url 'meals:meal_list' %}" class="btn">Back to Meals</a>
+    <a href="{% url 'admin:meals_meal_change' meal.id %}" class="btn">Edit Meal</a>
+    {% if not meal.recipe %}
+        <a href="{% url 'admin:meals_recipe_add' %}?meal={{ meal.id }}" class="btn">Add Recipe</a>
+    {% endif %}
+    {% if not meal.nutrition %}
+        <a href="{% url 'admin:meals_nutrition_add' %}?meal={{ meal.id }}" class="btn">Add Nutrition Info</a>
+    {% endif %}
+</div>
+
+<small style="color: #888; margin-top: 20px; display: block;">
+    Created: {{ meal.created_at|date:"M d, Y g:i A" }} | 
+    Last updated: {{ meal.updated_at|date:"M d, Y g:i A" }}
+</small>
+{% endblock %}

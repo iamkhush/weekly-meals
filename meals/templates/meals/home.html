@@ -1,0 +1,81 @@
+{% extends 'meals/base.html' %}
+
+{% block title %}Home - Weekly Meals{% endblock %}
+
+{% block content %}
+<h2>Welcome to Weekly Meals Planner</h2>
+
+{% if user.is_authenticated %}
+    <div style="margin-bottom: 2rem;">
+        <h3>Hello, {{ user.username }}!</h3>
+        
+        {% if no_meal_plan %}
+            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h4>No meal plan for this week</h4>
+                <p>You haven't created a meal plan for the week of {{ today|date:"M d, Y" }} yet.</p>
+                <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">Create Weekly Plan</a>
+            </div>
+        {% else %}
+            <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <h4>This Week's Plan ({{ week_start|date:"M d" }} - {{ week_start|date:"M d, Y" }})</h4>
+                <p><strong>{{ week_entries_count }}</strong> meals planned this week</p>
+                
+                {% if today_entries %}
+                    <div style="margin-top: 15px;">
+                        <h5>Today's Meals ({{ today|date:"l, M d" }}):</h5>
+                        <ul style="margin: 10px 0;">
+                            {% for entry in today_entries %}
+                                <li><strong>{{ entry.get_meal_type_display }}:</strong> 
+                                    <a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #155724;">{{ entry.meal.name }}</a>
+                                    {% if entry.meal.recipe %}
+                                        <small>({{ entry.meal.total_time }} min)</small>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                {% else %}
+                    <p><em>No meals planned for today.</em></p>
+                {% endif %}
+                
+                <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">View Full Week</a>
+            </div>
+        {% endif %}
+    </div>
+{% else %}
+    <p>Plan your weekly meals easily and efficiently!</p>
+    <div style="background-color: #d1ecf1; padding: 20px; border-radius: 8px; margin: 20px 0;">
+        <h4>Please log in to access your meal plans</h4>
+        <p>You need to be logged in to create and view meal plans.</p>
+        <a href="{% url 'admin:index' %}" class="btn">Login via Admin</a>
+    </div>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <h3>Quick Actions</h3>
+    <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">View Weekly Plan</a>
+    <a href="{% url 'meals:meal_list' %}" class="btn">Browse My Meals</a>
+    <a href="{% url 'admin:meals_meal_add' %}" class="btn">Add New Meal</a>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h3>Features</h3>
+    <ul>
+        <li><strong>Flexible Meal Creation:</strong> Add basic meals, then optionally include detailed recipes and nutrition info</li>
+        <li><strong>Weekly Planning:</strong> Plan meals for each day of the week</li>
+        <li><strong>Meal Organization:</strong> Organize by breakfast, lunch, dinner, and snacks</li>
+        <li><strong>Recipe Details:</strong> Store ingredients, instructions, prep/cook times, and difficulty</li>
+        <li><strong>Nutrition Tracking:</strong> Optional nutritional information per meal</li>
+    </ul>
+</div>
+
+<div style="margin-top: 2rem;">
+    <h3>Getting Started</h3>
+    <ol>
+        <li>Create an admin account: <code>python manage.py createsuperuser</code></li>
+        <li>Add some basic meals through the <a href="{% url 'admin:index' %}">Admin interface</a></li>
+        <li>Optionally add recipe details and nutrition information</li>
+        <li>Plan your weekly meals using the <a href="{% url 'meals:weekly_meal_plan' %}">Weekly Plan</a></li>
+    </ol>
+</div>
+{% endblock %}

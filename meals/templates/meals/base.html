@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Weekly Meals{% endblock %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border-radius: 8px;
+        }
+        .nav {
+            margin-bottom: 2rem;
+        }
+        .nav a {
+            margin-right: 1rem;
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        .content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            display: inline-block;
+            margin: 5px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .meal-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .meal-cell {
+            border: 1px solid #ddd;
+            padding: 10px;
+            min-height: 80px;
+            background-color: #f9f9f9;
+        }
+        .meal-cell.header {
+            background-color: #34495e;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Weekly Meals Planner</h1>
+    </div>
+    
+    <nav class="nav">
+        <a href="{% url 'meals:home' %}">Home</a>
+        <a href="{% url 'meals:meal_list' %}">My Meals</a>
+        <a href="{% url 'meals:weekly_meal_plan' %}">Weekly Plan</a>
+        <a href="{% url 'admin:index' %}">Admin</a>
+    </nav>
+    
+    <div class="content">
+        {% block content %}
+        {% endblock %}
+    </div>
+</body>
+</html>

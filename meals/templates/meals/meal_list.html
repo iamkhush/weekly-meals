@@ -1,0 +1,31 @@
+{% extends 'meals/base.html' %}
+
+{% block title %}My Meals - Weekly Meals{% endblock %}
+
+{% block content %}
+<h2>My Meals</h2>
+
+{% if meals %}
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px;">
+        {% for meal in meals %}
+        <div style="border: 1px solid #ddd; padding: 15px; border-radius: 8px; background-color: #f9f9f9;">
+            <h3><a href="{% url 'meals:meal_detail' meal.id %}" style="color: #2c3e50; text-decoration: none;">{{ meal.name }}</a></h3>
+            <p><strong>Type:</strong> {{ meal.get_meal_type_display }}</p>
+            <p><strong>Total Time:</strong> {{ meal.total_time }} minutes</p>
+            <p><strong>Servings:</strong> {{ meal.servings }}</p>
+            {% if meal.description %}
+                <p style="color: #666;">{{ meal.description|truncatewords:20 }}</p>
+            {% endif %}
+            <small style="color: #888;">Created: {{ meal.created_at|date:"M d, Y" }}</small>
+        </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <p>You haven't created any meals yet.</p>
+    <a href="{% url 'admin:meals_meal_add' %}" class="btn">Add Your First Meal</a>
+{% endif %}
+
+<div style="margin-top: 2rem;">
+    <a href="{% url 'admin:meals_meal_add' %}" class="btn">Add New Meal</a>
+</div>
+{% endblock %}
