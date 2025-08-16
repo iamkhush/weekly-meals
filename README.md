@@ -35,14 +35,15 @@ A Django web application for planning and managing weekly meals with optional re
    cd /path/to/weekly-meals
    ```
 
-2. **Activate virtual environment**:
+2. **Create and activate virtual environment**:
    ```bash
+   python -m venv .venv
    source .venv/bin/activate  # or .venv\Scripts\activate on Windows
    ```
 
 3. **Install dependencies**:
    ```bash
-   pip install django python-dotenv
+   pip install -r requirements.txt
    ```
 
 4. **Run database migrations**:
