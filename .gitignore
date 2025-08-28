@@ -46,3 +46,7 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
+
+# Logs directory content but keep the directory
+logs/*
+!logs/.gitkeep

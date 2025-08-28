@@ -26,7 +26,6 @@ def home(request):
         try:
             meal_plan = WeeklyMealPlan.objects.get(
                 user=request.user,
-                week_start_date=week_start
             )
             
             # Get today's meals
@@ -77,7 +76,6 @@ def weekly_meal_plan(request):
     
     meal_plan, created = WeeklyMealPlan.objects.get_or_create(
         user=request.user,
-        week_start_date=week_start,
         defaults={'name': f'Week of {week_start}'}
     )
     
@@ -98,7 +96,7 @@ def weekly_meal_plan(request):
         'meal_plan': meal_plan,
         'meal_grid': meal_grid,
         'days_of_week': MealPlanEntry.DAYS_OF_WEEK,
-        'meal_types': Meal.MEAL_TYPES,
+        'meal_types': MealPlanEntry.MEAL_TYPE_CHOICES,
         'week_start': week_start,
     }
     

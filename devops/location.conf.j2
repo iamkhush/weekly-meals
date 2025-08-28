@@ -1,0 +1,19 @@
+    location {{ script_name }}/ {
+        proxy_pass http://unix:/run/{{ app_name }}.sock:/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Script-Name {{ script_name }};
+    }
+    
+    location = {{ script_name }} {
+        proxy_pass http://unix:/run/{{ app_name }}.sock:/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Script-Name {{ script_name }};
+    }
+
+    location {{ static_root }} {
+        alias {{ static_root }};
+    }

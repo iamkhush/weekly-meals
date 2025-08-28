@@ -7,12 +7,11 @@ class Meal(models.Model):
     """Model representing a basic meal."""
     MEAL_TYPES = [
         ('breakfast', 'Breakfast'),
-        ('lunch', 'Lunch'),
-        ('dinner', 'Dinner'),
+        ('lunch or dinner', 'Lunch or Dinner'),
         ('snack', 'Snack'),
     ]
     
-    name = models.CharField(max_length=200)
+    name = models.CharField(max_length=200, unique=True)
     description = models.TextField(blank=True)
     meal_type = models.CharField(max_length=20, choices=MEAL_TYPES)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -77,17 +76,34 @@ class Nutrition(models.Model):
 class WeeklyMealPlan(models.Model):
     """Model representing a weekly meal plan for a user."""
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    week_start_date = models.DateField()
+    week_number = models.PositiveIntegerField(help_text="Week number in the year (1-53)")
     name = models.CharField(max_length=100, default="Weekly Meal Plan")
+    year = models.PositiveIntegerField(help_text="Year of the meal plan")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = ['user', 'week_start_date']
-    
-    def __str__(self):
-        return f"{self.user.username}'s plan for week of {self.week_start_date}"
+        unique_together = ['user', 'week_number']
 
+    def __str__(self):
+        return f"{self.user.username}'s plan for week {self.week_number} of {self.year}"
+
+    def as_json(self):
+        """Return the weekly meal plan as a JSON-segemrializable dict."""
+        plan = {day[1]: {} for day in MealPlanEntry.DAYS_OF_WEEK}
+        for entry in self.entries.select_related('meal').all():
+            day = entry.get_day_of_week_display()
+            meal_type = entry.get_meal_type_display()
+            plan[day][meal_type] = {
+                "meal": entry.meal.name,
+                "meal_id": entry.meal.id,
+                "notes": entry.notes,
+            }
+        return {
+            "week_number": self.week_number,
+            "name": self.name,
+            "plan": plan,
+        }
 
 class MealPlanEntry(models.Model):
     """Model representing a specific meal scheduled for a specific day and meal type."""
@@ -100,15 +116,20 @@ class MealPlanEntry(models.Model):
         (5, 'Saturday'),
         (6, 'Sunday'),
     ]
+
+    MEAL_TYPE_CHOICES = [
+        ('breakfast', 'Breakfast'),
+        ('lunch', 'Lunch'),
+        ('dinner', 'Dinner'),
+        ('snack', 'Snack'),
+    ]
     
     meal_plan = models.ForeignKey(WeeklyMealPlan, on_delete=models.CASCADE, related_name='entries')
     meal = models.ForeignKey(Meal, on_delete=models.CASCADE)
     day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
-    meal_type = models.CharField(max_length=20, choices=Meal.MEAL_TYPES)
+    meal_type = models.CharField(max_length=20, choices=MEAL_TYPE_CHOICES)
     notes = models.TextField(blank=True)
-    
-    class Meta:
-        unique_together = ['meal_plan', 'day_of_week', 'meal_type']
+    created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
         return f"{self.get_day_of_week_display()} {self.get_meal_type_display()}: {self.meal.name}"

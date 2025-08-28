@@ -1,0 +1,9 @@
+server {
+    listen 80;
+    server_name {{ server_name }};
+
+    client_max_body_size 5M;
+    client_body_buffer_size 5M;
+
+    include /etc/nginx/conf.d/*.location;
+}

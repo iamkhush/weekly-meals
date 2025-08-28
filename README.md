@@ -43,7 +43,7 @@ A Django web application for planning and managing weekly meals with optional re
 
 3. **Install dependencies**:
    ```bash
-   pip install -r requirements.txt
+   pip install -r requirements-dev.txt
    ```
 
 4. **Run database migrations**:
@@ -115,6 +115,21 @@ weekly_meals/
 2. Run migrations if you changed models: `python manage.py makemigrations && python manage.py migrate`
 3. Test your changes with the development server
 4. Update this README if you add new features
+
+# Deployment
+
+## Automated Setup Using Ansible ( on Ubuntu machine )
+```bash
+sudo apt install ansible
+
+git clone <your-repo-url>
+
+# Run the playbook
+ansible-playbook devops/ansible-playbook.yml --ask-become-pass
+
+# You'll need to provide database password as extra vars:
+ansible-playbook devops/ansible-playbook.yml --ask-become-pass -e "db_password=your_secure_password"
+```
 
 ## License
 

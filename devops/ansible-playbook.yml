@@ -1,0 +1,287 @@
+---
+- name: Deploy Weekly Meals Application
+  hosts: localhost
+  connection: local
+  become: yes
+  gather_facts: no
+  vars:
+    app_name: weekly-meals
+    app_user: iamkhush
+    project_dir: "/home/{{ app_user }}/projects/{{ app_name }}"
+    venv_dir: "{{ project_dir }}/.venv"
+    db_name: "{{ app_name }}"
+    db_user: iamkhush
+    server_name: chaddas.home
+    script_name: "/{{ app_name }}"
+    ansible_become_method: sudo
+    ansible_become_flags: '-H -S'
+    nginx_user: nginx
+    static_root: "/static/{{ app_name }}"
+
+  tasks:
+    - name: Update system packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+      tags: system
+
+    - name: Install required packages
+      apt:
+        name:
+          - python3
+          - python3-pip
+          - python3-venv
+          - postgresql
+          - postgresql-contrib
+          - nginx
+          - git
+          - python3-psycopg2
+        state: present
+      tags: system
+
+    - name: Start and enable PostgreSQL
+      systemd:
+        name: postgresql
+        state: started
+        enabled: yes
+      tags: database
+
+    - name: Check if database exists
+      postgresql_query:
+        db: postgres
+        query: "SELECT 1 FROM pg_database WHERE datname='{{ db_name }}'"
+      become_user: postgres
+      register: db_exists
+      tags: database
+
+    - name: Create PostgreSQL database
+      postgresql_db:
+        name: "{{ db_name }}"
+        state: present
+      become_user: postgres
+      when: db_exists.rowcount == 0
+      tags: database
+
+    - name: Check if database user exists
+      postgresql_query:
+        db: postgres
+        query: "SELECT 1 FROM pg_user WHERE usename='{{ db_user }}'"
+      become_user: postgres
+      register: user_exists
+      tags: database
+
+    - name: Create PostgreSQL user
+      postgresql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}:ALL"
+        state: present
+      become_user: postgres
+      when: user_exists.rowcount == 0
+      tags: database
+
+    - name: Create project directory
+      file:
+        path: "{{ project_dir }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+      become: no
+
+    - name: Check if virtual environment exists
+      stat:
+        path: "{{ venv_dir }}/bin/activate"
+      register: venv_exists
+      become: no
+      tags: python
+
+    - name: Create virtual environment
+      command: python3 -m venv "{{ venv_dir }}"
+      when: not venv_exists.stat.exists
+      become: no
+      tags: python
+
+    - name: Install Python requirements
+      pip:
+        requirements: "{{ project_dir }}/requirements.txt"
+        virtualenv: "{{ venv_dir }}"
+        state: present
+      become: no
+      tags: python
+
+    - name: Check if .env file exists
+      stat:
+        path: "{{ project_dir }}/.env"
+      register: env_exists
+      become: no
+      tags: config
+
+    - name: Create .env file from template
+      template:
+        src: env.j2
+        dest: "{{ project_dir }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_user }}"
+        mode: '0600'
+        backup: yes
+      become: no
+      when: not env_exists.stat.exists
+      tags: config
+
+    - name: Run Django migrations
+      django_manage:
+        command: migrate
+        app_path: "{{ project_dir }}"
+        virtualenv: "{{ venv_dir }}"
+      become: no
+      tags: django
+
+    - name: Ensure all parent directories for static files exist
+      file:
+        path: /static
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ nginx_user }}"
+        mode: '0755'
+      become: yes
+      tags: django
+
+    - name: Create static files directory
+      file:
+        path: "{{ static_root }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ nginx_user }}"
+        mode: '0755'
+      become: yes
+      tags: django
+
+    - name: Collect static files
+      django_manage:
+        command: collectstatic
+        app_path: "{{ project_dir }}"
+        virtualenv: "{{ venv_dir }}"
+      become: no
+      tags: django
+
+    - name: Set permissions for static files
+      file:
+        path: "{{ static_root }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ nginx_user }}"
+        mode: '0755'
+        recurse: yes
+      become: yes
+      tags: django
+
+    - name: Check if default Nginx site exists
+      stat:
+        path: /etc/nginx/conf.d/default.conf
+      register: default_nginx_site
+      become: yes  # Explicitly enable privilege escalation
+      tags: nginx
+
+    - name: Remove default Nginx site
+      file:
+        path: /etc/nginx/conf.d/default.conf
+        state: absent
+      when: default_nginx_site.stat.exists
+      notify: restart nginx
+      tags: nginx
+    
+    - name: Generate Nginx configuration from template
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/conf.d/chaddashome.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart nginx
+      tags: nginx
+
+    - name: Generate Nginx location from template
+      template:
+        src: location.conf.j2
+        dest: /etc/nginx/conf.d/weekly-meals.location
+        owner: root
+        group: root
+        mode: '0644'
+      become: yes
+      tags: nginx
+
+    - name: Generate Nginx configuration from template
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/conf.d/chaddashome.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart nginx
+      tags: nginx
+
+    - name: Test Nginx configuration
+      command: nginx -t
+      register: nginx_test
+      changed_when: false
+      tags: nginx
+    
+    - name: Generate Gunicorn service from template
+      template:
+        src: gunicorn.service.j2
+        dest: /etc/systemd/system/weekly-meals.service
+        owner: root
+        group: root
+        mode: '0644'
+      notify: restart gunicorn
+      tags: gunicorn
+
+    - name: Generate Gunicorn socket from template
+      template:
+        src: gunicorn.socket.j2
+        dest: /etc/systemd/system/weekly-meals.socket
+        owner: root
+        group: root
+        mode: '0644'
+      notify: 
+        - reload systemd
+        - restart gunicorn
+      tags: gunicorn
+
+    - name: Start and enable services
+      systemd:
+        name: "{{ item }}"
+        state: started
+        enabled: yes
+        daemon_reload: yes
+      loop:
+        - nginx
+        - weekly-meals.socket
+        - weekly-meals.service
+      tags: services
+    
+    - name: Restart gunicorn service
+      systemd:
+        name: "{{ item }}"
+        state: restarted
+      loop:
+        - nginx 
+        - weekly-meals.socket
+        - weekly-meals.service
+      tags: restart-services
+
+  handlers:
+    - name: restart nginx
+      systemd:
+        name: nginx
+        state: restarted
+
+    - name: reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: restart gunicorn
+      systemd:
+        name: weekly-meals.service
+        state: restarted
+

@@ -1,0 +1,27 @@
+[Unit]
+Description={{ app_name }} daemon
+Requires={{ app_name }}.socket
+After=network.target
+
+[Service]
+# gunicorn can let systemd know when it is ready
+Type=notify
+NotifyAccess=main
+# the specific user that our service will run as
+User={{ app_user }}
+Group={{ app_user }}
+# this user can be transiently created by systemd
+# DynamicUser=true
+RuntimeDirectory={{ app_name }}
+WorkingDirectory={{ project_dir }}
+EnvironmentFile={{ project_dir }}/.env
+ExecStart={{ project_dir }}/.venv/bin/gunicorn weekly_meals.asgi:application -k uvicorn_worker.UvicornWorker
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=5
+PrivateTmp=true
+# if your app does not need administrative capabilities, let systemd know
+# ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

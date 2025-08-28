@@ -1,0 +1,203 @@
+{% extends "admin/change_form.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .similar-meals-container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .similar-meals-results {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .meal-result {
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 5px 0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .meal-result:hover {
+            background-color: #f0f8ff;
+        }
+        
+        .meal-result-name {
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .meal-result-details {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .copy-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            font-size: 0.8em;
+            cursor: pointer;
+            float: right;
+        }
+        
+        .copy-btn:hover {
+            background-color: #218838;
+        }
+        
+        .search-hint {
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+    </style>
+{% endblock %}
+
+{% block field_sets %}
+    {{ block.super }}
+    
+    {% if not original %}
+        <!-- Similar meals results container -->
+        <div id="similar-meals-container" class="similar-meals-container">
+            <h3>🔍 Similar Meals Found</h3>
+            <div id="similar-meals-results" class="similar-meals-results"></div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+    {{ block.super }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const nameField = document.getElementById('id_name');
+            const resultsContainer = document.getElementById('similar-meals-container');
+            const resultsDiv = document.getElementById('similar-meals-results');
+            
+            if (!nameField || !resultsContainer) return; // Only available for new meals
+            
+            // Add search hint below the name field
+            const nameFieldContainer = nameField.closest('.form-row') || nameField.parentElement;
+            const searchHint = document.createElement('div');
+            searchHint.className = 'search-hint';
+            searchHint.innerHTML = '💡 As you type the meal name, similar meals will appear below to help avoid duplicates.';
+            nameFieldContainer.appendChild(searchHint);
+            
+            function searchSimilarMeals(query) {
+                if (query.length < 2) {
+                    resultsContainer.style.display = 'none';
+                    return;
+                }
+                
+                resultsDiv.innerHTML = '<p>Searching for similar meals...</p>';
+                resultsContainer.style.display = 'block';
+                
+                // Make AJAX request to search for similar meals
+                fetch(`/admin/meals/meal/search-similar/?q=${encodeURIComponent(query)}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.meals && data.meals.length > 0) {
+                        let html = '<p>Found similar meals - click "Copy Data" to use as a template:</p>';
+                        data.meals.forEach(meal => {
+                            html += `
+                                <div class="meal-result" data-meal-id="${meal.id}">
+                                    <button type="button" class="copy-btn" onclick="copyMealData(${meal.id}, '${escapeHtml(meal.name)}', '${escapeHtml(meal.description)}', '${meal.meal_type}')">
+                                        Copy Data
+                                    </button>
+                                    <div class="meal-result-name">${escapeHtml(meal.name)}</div>
+                                    <div class="meal-result-details">
+                                        Type: ${meal.meal_type_display} | 
+                                        Created by: ${meal.created_by} |
+                                        ${meal.has_recipe ? '✅ Has Recipe' : '❌ No Recipe'} |
+                                        ${meal.has_nutrition ? '✅ Has Nutrition' : '❌ No Nutrition'}
+                                    </div>
+                                    ${meal.description ? `<div class="meal-result-details">"${escapeHtml(meal.description)}"</div>` : ''}
+                                </div>
+                            `;
+                        });
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = '<p>🎉 No similar meals found - your meal idea seems unique!</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error searching meals:', error);
+                    resultsDiv.innerHTML = '<p>❌ Error searching meals. Please try again.</p>';
+                });
+            }
+            
+            // Auto-search as user types in the name field (debounced)
+            let searchTimeout;
+            nameField.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+                const query = this.value.trim();
+                
+                if (query.length === 0) {
+                    resultsContainer.style.display = 'none';
+                    return;
+                }
+                
+                searchTimeout = setTimeout(() => searchSimilarMeals(query), 500);
+            });
+            
+            // Hide results when name field loses focus (with delay to allow clicking copy buttons)
+            nameField.addEventListener('blur', function() {
+                setTimeout(() => {
+                    if (!resultsContainer.contains(document.activeElement)) {
+                        resultsContainer.style.display = 'none';
+                    }
+                }, 200);
+            });
+        });
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+        
+        function copyMealData(mealId, name, description, mealType) {
+            // Fill in the form fields with data from similar meal
+            const nameField = document.getElementById('id_name');
+            const descField = document.getElementById('id_description');
+            const typeField = document.getElementById('id_meal_type');
+            
+            if (nameField) nameField.value = name + ' (Copy)';
+            if (descField) descField.value = description || '';
+            if (typeField) typeField.value = mealType;
+            
+            // Hide the search results
+            const resultsContainer = document.getElementById('similar-meals-container');
+            if (resultsContainer) {
+                resultsContainer.style.display = 'none';
+            }
+            
+            // Show confirmation
+            alert(`✅ Copied data from "${name}"!\n\nYou can now modify the details as needed.`);
+            
+            // Focus back on the name field for editing
+            if (nameField) {
+                nameField.focus();
+                nameField.select();
+            }
+        }
+    </script>
+{% endblock %}
