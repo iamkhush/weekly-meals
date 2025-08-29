@@ -37,6 +37,11 @@ ALLOWED_HOSTS = ["127.0.0.1", "localhost"] + env.list("EXTRA_ALLOWED_HOSTS", def
 
 FORCE_SCRIPT_NAME = env("SCRIPT_NAME", default=None)
 
+LOGIN_URL = "admin:login"
+LOGIN_REDIRECT_URL = "admin:index"
+USE_X_FORWARDED_HOST = True
+GEMINI_API_KEY = env('GEMINI_API_KEY', default=None)
+
 
 # Application definition
 

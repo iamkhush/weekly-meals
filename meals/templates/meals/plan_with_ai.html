@@ -1,0 +1,35 @@
+{% extends 'meals/base.html' %}
+
+{% block title %}Plan with AI - Weekly Meals{% endblock %}
+
+{% block content %}
+<h2>Plan Your Next Week with AI</h2>
+<p>Use the power of Google Gemini to generate a meal plan for next week based on your past meals.</p>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="prompt">Your Prompt:</label>
+        <textarea name="prompt" id="prompt" class="form-control" rows="3" placeholder="e.g., Give me a healthy, low-carb meal plan with some variety.">{{ request.POST.prompt }}</textarea>
+    </div>
+    <button type="submit" class="btn">Generate Plan</button>
+</form>
+
+{% if suggestion %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h3>Suggested Meal Plan</h3>
+    </div>
+    <div class="card-body">
+        <pre>{{ suggestion }}</pre>
+    </div>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="alert alert-danger mt-4">
+    {{ error }}
+</div>
+{% endif %}
+
+{% endblock %}

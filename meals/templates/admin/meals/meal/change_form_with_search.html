@@ -105,7 +105,8 @@
                 resultsContainer.style.display = 'block';
                 
                 // Make AJAX request to search for similar meals
-                fetch(`/admin/meals/meal/search-similar/?q=${encodeURIComponent(query)}`, {
+                const searchUrl = "{% url 'admin:meals_meal_search_similar' %}";
+                fetch(`${searchUrl}?q=${encodeURIComponent(query)}`, {
                     method: 'GET',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -191,7 +192,9 @@
             }
             
             // Show confirmation
-            alert(`✅ Copied data from "${name}"!\n\nYou can now modify the details as needed.`);
+            alert(`✅ Copied data from "${name}"!
+
+You can now modify the details as needed.`);
             
             // Focus back on the name field for editing
             if (nameField) {

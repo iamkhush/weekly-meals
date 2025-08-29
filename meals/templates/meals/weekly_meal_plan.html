@@ -4,6 +4,14 @@
 {% block title %}Weekly Meal Plan - Weekly Meals{% endblock %}
 
 {% block content %}
+<div class="week-navigation" style="margin-bottom: 1rem; text-align: center;">
+    <a href="{% url 'meals:weekly_meal_plan_date' previous_week_year previous_week_number %}" class="btn">&laquo; Previous Week</a>
+    {% if not is_current_week %}
+        <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">Current Week</a>
+    {% endif %}
+    <a href="{% url 'meals:weekly_meal_plan_date' next_week_year next_week_number %}" class="btn">Next Week &raquo;</a>
+</div>
+
 <h2>Weekly Meal Plan</h2>
 <p><strong>Week of:</strong> {{ week_start|date:"M d, Y" }}</p>
 
@@ -36,18 +44,19 @@
 </div>
 
 <div style="margin-top: 2rem;">
-    <a href="{% url 'admin:meals_weeklymealplan_change' meal_plan.id %}" class="btn">Edit Meal Plan</a>
-    <a href="{% url 'admin:meals_mealplanentry_add' %}" class="btn">Add Meal to Plan</a>
+    <h3>Add a Meal to Your Plan</h3>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn">Add Meal</button>
+    </form>
+    <p class="mt-2">Don't see the meal you're looking for? <a href="{% url 'admin:meals_meal_add' %}">Create a new meal</a>.</p>
 </div>
 
 <div style="margin-top: 2rem;">
-    <h3>Instructions</h3>
-    <p>To add meals to your weekly plan:</p>
-    <ol>
-        <li>First, make sure you have created some meals in the <a href="{% url 'admin:meals_meal_changelist' %}">Meals admin</a></li>
-        <li>Then add entries to your meal plan using the <a href="{% url 'admin:meals_mealplanentry_add' %}">Add Meal Plan Entry</a> form</li>
-        <li>Or edit this meal plan directly using the <a href="{% url 'admin:meals_weeklymealplan_change' meal_plan.id %}">"Edit Meal Plan"</a> button above</li>
-    </ol>
+    <h3>Plan with AI</h3>
+    <p>Let AI help you generate a meal plan for next week based on your past meals.</p>
+    <a href="{% url 'meals:plan_with_ai' %}" class="btn">Plan with AI</a>
 </div>
 {% endblock %}
 

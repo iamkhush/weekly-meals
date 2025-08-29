@@ -13,4 +13,9 @@ from django.core.asgi import get_asgi_application
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'weekly_meals.settings')
 
-application = get_asgi_application()
+django_app = get_asgi_application()
+
+async def application(scope, receive, send):
+    if scope['type'] == 'http':
+        scope['root_path'] = os.environ.get('SCRIPT_NAME', '')
+    await django_app(scope, receive, send)

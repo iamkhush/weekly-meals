@@ -9,38 +9,30 @@
     <div style="margin-bottom: 2rem;">
         <h3>Hello, {{ user.username }}!</h3>
         
-        {% if no_meal_plan %}
-            <div style="background-color: #fff3cd; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h4>No meal plan for this week</h4>
-                <p>You haven't created a meal plan for the week of {{ today|date:"M d, Y" }} yet.</p>
-                <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">Create Weekly Plan</a>
-            </div>
-        {% else %}
-            <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
-                <h4>This Week's Plan ({{ week_start|date:"M d" }} - {{ week_start|date:"M d, Y" }})</h4>
-                <p><strong>{{ week_entries_count }}</strong> meals planned this week</p>
-                
-                {% if today_entries %}
-                    <div style="margin-top: 15px;">
-                        <h5>Today's Meals ({{ today|date:"l, M d" }}):</h5>
-                        <ul style="margin: 10px 0;">
-                            {% for entry in today_entries %}
-                                <li><strong>{{ entry.get_meal_type_display }}:</strong> 
-                                    <a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #155724;">{{ entry.meal.name }}</a>
-                                    {% if entry.meal.recipe %}
-                                        <small>({{ entry.meal.total_time }} min)</small>
-                                    {% endif %}
-                                </li>
-                            {% endfor %}
-                        </ul>
-                    </div>
-                {% else %}
-                    <p><em>No meals planned for today.</em></p>
-                {% endif %}
-                
-                <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">View Full Week</a>
-            </div>
-        {% endif %}
+        <div style="background-color: #d4edda; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h4>This Week's Plan ({{ week_start|date:"M d" }} - {{ week_end|date:"M d, Y" }})</h4>
+            <p><strong>{{ week_entries_count }}</strong> meals planned this week</p>
+            
+            {% if today_entries %}
+                <div style="margin-top: 15px;">
+                    <h5>Today's Meals ({{ today|date:"l, M d" }}):</h5>
+                    <ul style="margin: 10px 0;">
+                        {% for entry in today_entries %}
+                            <li><strong>{{ entry.get_meal_type_display }}:</strong> 
+                                <a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #155724;">{{ entry.meal.name }}</a>
+                                {% if entry.meal.recipe %}
+                                    <small>({{ entry.meal.total_time }} min)</small>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% else %}
+                <p><em>No meals planned for today.</em></p>
+            {% endif %}
+            
+            <a href="{% url 'meals:weekly_meal_plan' %}" class="btn">View Full Week</a>
+        </div>
     </div>
 {% else %}
     <p>Plan your weekly meals easily and efficiently!</p>
