@@ -7,6 +7,8 @@ from .models import Meal, WeeklyMealPlan, MealPlanEntry
 from .utils import get_default_user
 import google.generativeai as genai
 from django.conf import settings
+from django.http import JsonResponse
+import json
 
 from langsmith import traceable
 from langsmith.run_helpers import get_current_run_tree
@@ -82,17 +84,6 @@ def weekly_meal_plan(request, year=None, week=None):
         defaults={'name': f'Week of {week_start}'}
     )
     
-    if request.method == 'POST':
-        form = MealPlanEntryForm(request.POST, user=user)
-        if form.is_valid():
-            entry = form.save(commit=False)
-            entry.meal_plan = meal_plan
-            entry.save()
-            messages.success(request, 'Meal added to your plan!')
-            return redirect('meals:weekly_meal_plan_date', year=year, week=week)
-    else:
-        form = MealPlanEntryForm(user=user)
-
     entries = MealPlanEntry.objects.filter(meal_plan=meal_plan).select_related('meal')
     
     meal_grid = {}
@@ -119,12 +110,12 @@ def weekly_meal_plan(request, year=None, week=None):
         'days_of_week': MealPlanEntry.DAYS_OF_WEEK,
         'meal_types': MealPlanEntry.MEAL_TYPE_CHOICES,
         'week_start': week_start,
-        'form': form,
         'previous_week_year': previous_week_year,
         'previous_week_number': previous_week_number,
         'next_week_year': next_week_year,
         'next_week_number': next_week_number,
-        'is_current_week': (year == timezone.now().date().year and week == timezone.now().date().isocalendar()[1])
+        'is_current_week': (year == timezone.now().date().year and week == timezone.now().date().isocalendar()[1]),
+        'all_meals': Meal.objects.filter(created_by=user)
     }
     
     return render(request, 'meals/weekly_meal_plan.html', context)
@@ -157,38 +148,75 @@ def plan_with_ai(request):
         if not past_meals_str:
             past_meals_str = "No recent meal data found."
             
-        try:
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
-            
-            full_prompt = f"""
-            Here is my meal planning history for the last 4 weeks:
-            {past_meals_str}
+            try:
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-1.5-flash-latest')
+                
+                full_prompt = f"""
+                Here is my meal planning history for the last 4 weeks:
+                {past_meals_str}
 
-            Here is my request for next week's meal plan:
-            "{prompt}"
+                Here is my request for next week's meal plan:
+                "{prompt}"
 
-            Based on my history and my request, please generate a 7-day meal plan for next week (Monday to Sunday) with Breakfast, Lunch, and Dinner.
-            Please provide the output in a clear, easy-to-read format.
-            """
-            
-            response = model.generate_content(full_prompt)
-            context['suggestion'] = response.text
+                Based on my history and my request, please generate a 7-day meal plan for next week (Monday to Sunday) with Breakfast, Lunch, and Dinner.
+                Please provide the output in a clear, easy-to-read format.
+                """
+                
+                response = model.generate_content(full_prompt)
+                context['suggestion'] = response.text
 
-            if run_tree:
-                run_tree.add_outputs({'suggestion': response.text})
-
-            # Update current trace with token usage
-            if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 if run_tree:
-                    usage_data = {
-                        'prompt_tokens': response.usage_metadata.prompt_token_count,
-                        'completion_tokens': response.usage_metadata.candidates_token_count,
-                        'total_tokens': response.usage_metadata.total_token_count
-                    }
-                    run_tree.update(usage=usage_data)
+                    run_tree.add_outputs({'suggestion': response.text})
 
-        except Exception as e:
-            context['error'] = f"An error occurred while generating the meal plan: {e}"
+                # Update current trace with token usage
+                if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                    if run_tree:
+                        usage_data = {
+                            'prompt_tokens': response.usage_metadata.prompt_token_count,
+                            'completion_tokens': response.usage_metadata.candidates_token_count,
+                            'total_tokens': response.usage_metadata.total_token_count
+                        }
+                        run_tree.update(usage=usage_data)
+
+            except Exception as e:
+                context['error'] = f"An error occurred while generating the meal plan: {e}"
 
     return render(request, 'meals/plan_with_ai.html', context)
+
+def update_meal_plan_entry(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            meal_plan_id = data.get('meal_plan_id')
+            day_of_week = data.get('day_of_week')
+            meal_type = data.get('meal_type')
+            meal_id = data.get('meal_id')
+
+            user = get_default_user()
+            meal_plan = get_object_or_404(WeeklyMealPlan, id=meal_plan_id, user=user)
+
+            if not meal_id:
+                MealPlanEntry.objects.filter(
+                    meal_plan=meal_plan,
+                    day_of_week=day_of_week,
+                    meal_type=meal_type
+                ).delete()
+                return JsonResponse({'status': 'success', 'message': 'Meal removed'})
+
+            meal = get_object_or_404(Meal, id=meal_id, created_by=user)
+
+            entry, created = MealPlanEntry.objects.update_or_create(
+                meal_plan=meal_plan,
+                day_of_week=day_of_week,
+                meal_type=meal_type,
+                defaults={'meal': meal}
+            )
+            
+            return JsonResponse({'status': 'success', 'message': 'Meal plan updated'})
+        except json.JSONDecodeError:
+            return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=500)
+
+    return JsonResponse({'status': 'error', 'message': 'Invalid request method'}, status=405)
