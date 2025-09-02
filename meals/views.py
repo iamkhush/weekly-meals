@@ -8,6 +8,9 @@ from .utils import get_default_user
 import google.generativeai as genai
 from django.conf import settings
 
+from langsmith import traceable
+from langsmith.run_helpers import get_current_run_tree
+
 def home(request):
     """Home page view with current week's meal plan preview."""
     user = get_default_user()
@@ -126,11 +129,16 @@ def weekly_meal_plan(request, year=None, week=None):
     
     return render(request, 'meals/weekly_meal_plan.html', context)
 
+@traceable
 def plan_with_ai(request):
     context = {}
     if request.method == 'POST':
         prompt = request.POST.get('prompt', '')
         
+        run_tree = get_current_run_tree()
+        if run_tree:
+            run_tree.add_inputs({'prompt': prompt})
+
         # Fetch past 4 weeks of meal data
         today = timezone.now().date()
         four_weeks_ago = today - timedelta(weeks=4)
@@ -166,7 +174,20 @@ def plan_with_ai(request):
             
             response = model.generate_content(full_prompt)
             context['suggestion'] = response.text
-            
+
+            if run_tree:
+                run_tree.add_outputs({'suggestion': response.text})
+
+            # Update current trace with token usage
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                if run_tree:
+                    usage_data = {
+                        'prompt_tokens': response.usage_metadata.prompt_token_count,
+                        'completion_tokens': response.usage_metadata.candidates_token_count,
+                        'total_tokens': response.usage_metadata.total_token_count
+                    }
+                    run_tree.update(usage=usage_data)
+
         except Exception as e:
             context['error'] = f"An error occurred while generating the meal plan: {e}"
 
