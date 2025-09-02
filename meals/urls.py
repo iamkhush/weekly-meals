@@ -10,4 +10,5 @@ urlpatterns = [
     path('weekly-plan/', views.weekly_meal_plan, name='weekly_meal_plan'),
     path('weekly-plan/<int:year>/<int:week>/', views.weekly_meal_plan, name='weekly_meal_plan_date'),
     path('plan-with-ai/', views.plan_with_ai, name='plan_with_ai'),
+    path('update-meal-entry/', views.update_meal_plan_entry, name='update_meal_plan_entry'),
 ]

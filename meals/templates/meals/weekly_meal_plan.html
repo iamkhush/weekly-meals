@@ -12,7 +12,13 @@
     <a href="{% url 'meals:weekly_meal_plan_date' next_week_year next_week_number %}" class="btn">Next Week &raquo;</a>
 </div>
 
-<h2>Weekly Meal Plan</h2>
+<div style="display: flex; justify-content: space-between; align-items: center;">
+    <h2>Weekly Meal Plan</h2>
+    <div>
+        <a href="{% url 'meals:plan_with_ai' %}" class="btn">Plan week with AI</a>
+        <button id="edit-plan-btn" class="btn">Edit</button>
+    </div>
+</div>
 <p><strong>Week of:</strong> {{ week_start|date:"M d, Y" }}</p>
 
 <div class="meal-grid">
@@ -26,42 +32,164 @@
     {% for meal_type, meal_type_display in meal_types %}
         <div class="meal-cell header">{{ meal_type_display }}</div>
         {% for day_num, day_name in days_of_week %}
-            <div class="meal-cell">
+            <div class="meal-cell" data-day="{{ day_num }}" data-meal-type="{{ meal_type }}">
                 {% if meal_grid|lookup:day_num|lookup:meal_type %}
                     {% with entry=meal_grid|lookup:day_num|lookup:meal_type %}
-                        <strong><a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #2c3e50; text-decoration: none;">{{ entry.meal.name }}</a></strong>
-                        <br><small>{{ entry.meal.total_time }}min</small>
-                        {% if entry.notes %}
-                            <br><small style="color: #666;">{{ entry.notes }}</small>
-                        {% endif %}
+                        <div class="meal-display">
+                            <strong><a href="{% url 'meals:meal_detail' entry.meal.id %}" style="color: #2c3e50; text-decoration: none;">{{ entry.meal.name }}</a></strong>
+                            <br><small>{{ entry.meal.total_time }}min</small>
+                            {% if entry.notes %}
+                                <br><small style="color: #666;">{{ entry.notes }}</small>
+                            {% endif %}
+                        </div>
                     {% endwith %}
                 {% else %}
-                    <em style="color: #999;">No meal planned</em>
+                    <div class="meal-display">
+                        <em style="color: #999;">No meal planned</em>
+                    </div>
                 {% endif %}
             </div>
         {% endfor %}
     {% endfor %}
 </div>
 
-<div style="margin-top: 2rem;">
-    <h3>Add a Meal to Your Plan</h3>
-    <form method="post">
-        {% csrf_token %}
-        {{ form.as_p }}
-        <button type="submit" class="btn">Add Meal</button>
-    </form>
-    <p class="mt-2">Don't see the meal you're looking for? <a href="{% url 'admin:meals_meal_add' %}">Create a new meal</a>.</p>
-</div>
-
-<div style="margin-top: 2rem;">
-    <h3>Plan with AI</h3>
-    <p>Let AI help you generate a meal plan for next week based on your past meals.</p>
-    <a href="{% url 'meals:plan_with_ai' %}" class="btn">Plan with AI</a>
-</div>
-{% endblock %}
-
-<!-- Template filter to lookup dictionary values -->
-{% load static %}
 <script>
-// Custom template filter would go here, but for now we'll handle this in the view
+document.addEventListener('DOMContentLoaded', function() {
+    const editBtn = document.getElementById('edit-plan-btn');
+    const mealCells = document.querySelectorAll('.meal-cell[data-day]');
+    let isEditMode = false;
+    let saveTimeout;
+
+    const meals = [
+        { id: '', name: 'No meal planned' },
+        {% for meal in all_meals %}
+        { id: '{{ meal.id }}', name: '{{ meal.name|escapejs }}' },
+        {% endfor %}
+    ];
+
+    function toggleEditMode() {
+        isEditMode = !isEditMode;
+        editBtn.textContent = isEditMode ? 'Done' : 'Edit';
+        mealCells.forEach(cell => {
+            if (isEditMode) {
+                cell.classList.add('editable');
+                cell.addEventListener('click', handleCellClick);
+            } else {
+                cell.classList.remove('editable');
+                cell.removeEventListener('click', handleCellClick);
+                const select = cell.querySelector('select');
+                if (select) {
+                    const mealId = select.value;
+                    const meal = meals.find(m => m.id == mealId);
+                    const displayDiv = document.createElement('div');
+                    displayDiv.classList.add('meal-display');
+                    if (meal && meal.id) {
+                        displayDiv.innerHTML = `<strong><a href="/meals/${meal.id}/" style="color: #2c3e50; text-decoration: none;">${meal.name}</a></strong>`;
+                    } else {
+                        displayDiv.innerHTML = `<em style="color: #999;">No meal planned</em>`;
+                    }
+                    cell.innerHTML = '';
+                    cell.appendChild(displayDiv);
+                }
+            }
+        });
+    }
+
+    function handleCellClick(event) {
+        const cell = event.currentTarget;
+        if (cell.querySelector('select')) return;
+
+        const currentMealDisplay = cell.querySelector('.meal-display').innerHTML;
+        const day = cell.dataset.day;
+        const mealType = cell.dataset.mealType;
+        
+        const select = document.createElement('select');
+        select.classList.add('form-control');
+        
+        let currentMealId = '';
+        const mealLink = cell.querySelector('.meal-display a');
+        if (mealLink) {
+            const urlParts = mealLink.href.split('/');
+            currentMealId = urlParts[urlParts.length - 2];
+        }
+
+        meals.forEach(meal => {
+            const option = document.createElement('option');
+            option.value = meal.id;
+            option.textContent = meal.name;
+            if (meal.id === currentMealId) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        cell.innerHTML = '';
+        cell.appendChild(select);
+        select.focus();
+
+        select.addEventListener('change', () => {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                saveMealSelection(cell, select.value);
+            }, 1000);
+        });
+    }
+
+    function saveMealSelection(cell, mealId) {
+        const day = cell.dataset.day;
+        const mealType = cell.dataset.mealType;
+        const mealPlanId = '{{ meal_plan.id }}';
+
+        fetch('{% url "meals:update_meal_plan_entry" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: JSON.stringify({
+                meal_plan_id: mealPlanId,
+                day_of_week: day,
+                meal_type: mealType,
+                meal_id: mealId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                console.log('Meal plan updated');
+                const meal = meals.find(m => m.id == mealId);
+                const displayDiv = document.createElement('div');
+                displayDiv.classList.add('meal-display');
+                if (meal && meal.id) {
+                    displayDiv.innerHTML = `<strong><a href="/meals/${meal.id}/" style="color: #2c3e50; text-decoration: none;">${meal.name}</a></strong>`;
+                } else {
+                    displayDiv.innerHTML = `<em style="color: #999;">No meal planned</em>`;
+                }
+                
+                if (!isEditMode) {
+                    cell.innerHTML = '';
+                    cell.appendChild(displayDiv);
+                }
+            } else {
+                console.error('Failed to update meal plan:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+        });
+    }
+
+    editBtn.addEventListener('click', toggleEditMode);
+});
 </script>
+
+<style>
+.editable {
+    cursor: pointer;
+    background-color: #f0f8ff;
+}
+.meal-cell select {
+    width: 100%;
+}
+</style>
+{% endblock %}
