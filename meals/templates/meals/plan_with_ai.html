@@ -10,7 +10,7 @@
     {% csrf_token %}
     <div class="form-group">
         <label for="prompt">Your Prompt:</label>
-        <textarea name="prompt" id="prompt" class="form-control" rows="3" placeholder="e.g., Give me a healthy, low-carb meal plan with some variety.">{{ request.POST.prompt }}</textarea>
+        <textarea name="prompt" id="prompt" class="form-control" rows="3" placeholder="e.g., Give me a healthy, low-carb meal plan with some variety.">{% if request.POST.prompt %}{{ request.POST.prompt }}{% else %}Only left overs on lunch mondays and thursdays. We prefer vegetarian food variety is preferred.{% endif %}</textarea>
     </div>
     <button type="submit" class="btn">Generate Plan</button>
 </form>

@@ -134,9 +134,11 @@ def plan_with_ai(request):
         # Fetch past 4 weeks of meal data
         today = timezone.now().date()
         four_weeks_ago = today - timedelta(weeks=4)
+
+        user = get_default_user()
         
         meal_entries = MealPlanEntry.objects.filter(
-            meal_plan__user=request.user,
+            meal_plan__user=user,
             meal_plan__created_at__gte=four_weeks_ago
         ).select_related('meal').order_by('meal_plan__created_at', 'day_of_week', 'meal_type')
         
