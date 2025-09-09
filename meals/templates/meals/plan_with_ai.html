@@ -10,7 +10,15 @@
     {% csrf_token %}
     <div class="form-group">
         <label for="prompt">Your Prompt:</label>
-        <textarea name="prompt" id="prompt" class="form-control" rows="3" placeholder="e.g., Give me a healthy, low-carb meal plan with some variety.">{% if request.POST.prompt %}{{ request.POST.prompt }}{% else %}Only left overs on lunch mondays and thursdays. We prefer vegetarian food variety is preferred.{% endif %}</textarea>
+        <textarea name="prompt" id="prompt" class="form-control" rows="3" placeholder="e.g., Give me a healthy, low-carb meal plan with some variety.">{% if request.POST.prompt %}{{ request.POST.prompt }}{% else %}
+            Assume all meals except breakfasts lasts 2 days. 
+            After first use meals should be used as left overs.
+            Lunch on mondays and thursdays only use left overs.
+            We prefer vegetarian food, but variety in different cuisines is preferred. 
+            Prefer avoiding repeating of same food we ate in the previous week ( repeating first 3 weeks is okay ).
+            No 2consecutive meals on the same day should have more than 1 hour of cooking time.
+            {% endif %}
+        </textarea>
     </div>
     <button type="submit" class="btn">Generate Plan</button>
 </form>

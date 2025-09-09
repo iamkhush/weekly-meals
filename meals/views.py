@@ -122,7 +122,7 @@ def weekly_meal_plan(request, year=None, week=None):
 
 @traceable
 def plan_with_ai(request):
-    context = {}
+    context = {'error': None, 'suggestion': None, 'request': request}
     if request.method == 'POST':
         prompt = request.POST.get('prompt', '')
         
@@ -148,39 +148,39 @@ def plan_with_ai(request):
         if not past_meals_str:
             past_meals_str = "No recent meal data found."
             
-            try:
-                genai.configure(api_key=settings.GEMINI_API_KEY)
-                model = genai.GenerativeModel('gemini-1.5-flash-latest')
-                
-                full_prompt = f"""
-                Here is my meal planning history for the last 4 weeks:
-                {past_meals_str}
+        try:
+            genai.configure(api_key=settings.GEMINI_API_KEY)
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            
+            full_prompt = f"""
+            Here is my meal planning history for the last 4 weeks:
+            {past_meals_str}
 
-                Here is my request for next week's meal plan:
-                "{prompt}"
+            Here is my request for next week's meal plan:
+            "{prompt}"
 
-                Based on my history and my request, please generate a 7-day meal plan for next week (Monday to Sunday) with Breakfast, Lunch, and Dinner.
-                Please provide the output in a clear, easy-to-read format.
-                """
-                
-                response = model.generate_content(full_prompt)
-                context['suggestion'] = response.text
+            Based on my history and my request, please generate a 7-day meal plan for next week (Monday to Sunday) with Breakfast, Lunch, and Dinner.
+            Please provide the output in a clear, easy-to-read format.
+            """
+            
+            response = model.generate_content(full_prompt)
+            context['suggestion'] = response.text
 
+            if run_tree:
+                run_tree.add_outputs({'suggestion': response.text})
+
+            # Update current trace with token usage
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 if run_tree:
-                    run_tree.add_outputs({'suggestion': response.text})
+                    usage_data = {
+                        'prompt_tokens': response.usage_metadata.prompt_token_count,
+                        'completion_tokens': response.usage_metadata.candidates_token_count,
+                        'total_tokens': response.usage_metadata.total_token_count
+                    }
+                    run_tree.update(usage=usage_data)
 
-                # Update current trace with token usage
-                if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                    if run_tree:
-                        usage_data = {
-                            'prompt_tokens': response.usage_metadata.prompt_token_count,
-                            'completion_tokens': response.usage_metadata.candidates_token_count,
-                            'total_tokens': response.usage_metadata.total_token_count
-                        }
-                        run_tree.update(usage=usage_data)
-
-            except Exception as e:
-                context['error'] = f"An error occurred while generating the meal plan: {e}"
+        except Exception as e:
+            context['error'] = f"An error occurred while generating the meal plan: {e}"
 
     return render(request, 'meals/plan_with_ai.html', context)
 
