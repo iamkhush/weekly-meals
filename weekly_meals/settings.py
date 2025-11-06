@@ -34,6 +34,7 @@ SECRET_KEY = env('SECRET_KEY')
 DEBUG = env('DEBUG')
 
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"] + env.list("EXTRA_ALLOWED_HOSTS", default=[])
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 FORCE_SCRIPT_NAME = env("SCRIPT_NAME", default=None)
 

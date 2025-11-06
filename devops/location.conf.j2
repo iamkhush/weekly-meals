@@ -18,6 +18,11 @@
         proxy_set_header X-Script-Name {{ script_name }};
     }
 
+    location {{ static_root }}/meals/service-worker.js {
+        alias {{ static_root }}/meals/service-worker.js;
+        add_header Service-Worker-Allowed "/weekly-meals/";
+    }
+
     location {{ static_root }} {
         alias {{ static_root }};
     }

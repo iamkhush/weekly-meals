@@ -115,7 +115,7 @@ def weekly_meal_plan(request, year=None, week=None):
         'next_week_year': next_week_year,
         'next_week_number': next_week_number,
         'is_current_week': (year == timezone.now().date().year and week == timezone.now().date().isocalendar()[1]),
-        'all_meals': Meal.objects.filter(created_by=user)
+        'all_meals': Meal.objects.filter(created_by=user).order_by('name'),
     }
     
     return render(request, 'meals/weekly_meal_plan.html', context)
@@ -150,7 +150,7 @@ def plan_with_ai(request):
             
         try:
             genai.configure(api_key=settings.GEMINI_API_KEY)
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            model = genai.GenerativeModel('gemini-2.0-flash')
             
             full_prompt = f"""
             Here is my meal planning history for the last 4 weeks:
