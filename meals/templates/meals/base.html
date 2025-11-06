@@ -1,10 +1,25 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Weekly Meals{% endblock %}</title>
-    <style>
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                    navigator.serviceWorker.register("{% static 'meals/service-worker.js' %}", {scope: '/weekly-meals/'}).then(function(reg) {
+                        // Dynamically cache the current page if it's a weekly plan page
+                        if (window.location.pathname.match(/^\/weekly-meals\/weekly-plan\//)) {
+                            if (reg.active) {
+                                reg.active.postMessage({action: 'cache-url', url: window.location.pathname});
+                            }
+                        }
+                    });
+                });
+            }
+        </script>
+        <style>
         body {
             font-family: Arial, sans-serif;
             max-width: 1200px;
